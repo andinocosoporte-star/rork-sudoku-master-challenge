@@ -64,7 +64,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <Text style={styles.title}>Sudoku Master</Text>
+        <Text style={styles.title}>Sudoku Master!!</Text>
         <Text style={styles.subtitle}>100 Challenging Levels</Text>
         
         <View style={styles.statsContainer}>
