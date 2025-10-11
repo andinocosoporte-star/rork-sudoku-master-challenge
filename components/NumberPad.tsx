@@ -1,9 +1,7 @@
 import React, { memo, useMemo, useState, useCallback } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, Dimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
 import { Eraser } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
-
-const { width } = Dimensions.get('window');
 
 const COLS = 5;  // cantidad de botones por fila
 const GAP = 12;  // mismo valor que en styles.numbersRow.gap
@@ -21,14 +19,24 @@ const NumberPad = memo(function NumberPad({
   disabled, 
   availableNumbers = [] 
 }: NumberPadProps) {
-
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
   const [containerWidth, setContainerWidth] = useState<number>(width);
 
-  // Calculamos el tamaño exacto de cada botón
   const buttonSize = useMemo(() => {
     const gapsWidth = GAP * (COLS - 1);
-    return Math.floor((containerWidth - gapsWidth) / COLS);
-  }, [containerWidth]);
+    const calculatedSize = Math.floor((containerWidth - gapsWidth) / COLS);
+    const maxSize = isLandscape ? Math.min(height * 0.12, 70) : Math.min(width * 0.15, 80);
+    return Math.min(calculatedSize, maxSize);
+  }, [containerWidth, width, height, isLandscape]);
+
+  const textSize = useMemo(() => {
+    return Math.max(buttonSize * 0.4, 16);
+  }, [buttonSize]);
+
+  const iconSize = useMemo(() => {
+    return Math.max(buttonSize * 0.35, 20);
+  }, [buttonSize]);
 
   const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -56,6 +64,7 @@ const NumberPad = memo(function NumberPad({
         >
           <Text style={[
             styles.numberText,
+            { fontSize: textSize },
             isSelected && styles.selectedNumberText,
             isDisabled && styles.disabledText,
             !isAvailable && styles.unavailableText,
@@ -65,7 +74,7 @@ const NumberPad = memo(function NumberPad({
         </View>
       </TouchableOpacity>
     );
-  }, [buttonSize, selectedNumber, disabled, availableNumbers, onNumberSelect]);
+  }, [buttonSize, textSize, selectedNumber, disabled, availableNumbers, onNumberSelect]);
 
   return (
     <View style={styles.backgroundContainer}>
@@ -92,7 +101,7 @@ const NumberPad = memo(function NumberPad({
                 disabled && styles.disabledButton,
               ]}
             >
-              <Eraser size={24} color={disabled ? Colors.textLight : Colors.error} />
+              <Eraser size={iconSize} color={disabled ? Colors.textLight : Colors.error} />
             </View>
           </TouchableOpacity>
         </View>
@@ -107,13 +116,13 @@ const styles = StyleSheet.create({
   backgroundContainer: {
     backgroundColor: Colors.boardContainer,
     borderRadius: 16,
-    padding: 24,
-    marginHorizontal: -15,
+    padding: 16,
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 1,
     shadowRadius: 8,
     elevation: 6,
+    width: '100%',
   },
   container: {
     alignItems: 'center',
@@ -153,7 +162,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
   },
   numberText: {
-    fontSize: 20,
     fontWeight: '600',
     color: Colors.numberNormal,
   },

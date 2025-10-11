@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
 import { Colors } from '@/constants/colors';
 
 type Coord = { row: number; col: number };
@@ -28,12 +28,20 @@ const SudokuGrid = memo(function SudokuGrid({
   conflicts,
   disabled,
 }: SudokuGridProps) {
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
   const [containerWidth, setContainerWidth] = useState<number>(320);
 
   const cellSize = useMemo(() => {
     const gapsWidth = GAP * (COLS - 1);
-    return Math.floor((containerWidth - gapsWidth) / COLS);
-  }, [containerWidth]);
+    const calculatedSize = Math.floor((containerWidth - gapsWidth) / COLS);
+    const maxSize = isLandscape ? Math.min(height * 0.08, 60) : Math.min(width * 0.1, 50);
+    return Math.min(calculatedSize, maxSize);
+  }, [containerWidth, width, height, isLandscape]);
+
+  const textSize = useMemo(() => {
+    return Math.max(cellSize * 0.5, 14);
+  }, [cellSize]);
 
   const handleLayout = useCallback((e: any) => {
     setContainerWidth(e.nativeEvent.layout.width);
@@ -74,6 +82,7 @@ const SudokuGrid = memo(function SudokuGrid({
               <Text
                 style={[
                   styles.cellText,
+                  { fontSize: textSize },
                   isFixed && styles.fixedText,
                   isSelected && styles.selectedText,
                   isConflict && styles.conflictText,
@@ -86,7 +95,7 @@ const SudokuGrid = memo(function SudokuGrid({
         </TouchableOpacity>
       );
     },
-    [cellSize, grid, selected, fixedCells, sameNumber, conflicts, onCellPress, disabled]
+    [cellSize, textSize, grid, selected, fixedCells, sameNumber, conflicts, onCellPress, disabled]
   );
 
   return (
@@ -116,6 +125,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 4,
     elevation: 4,
+    alignSelf: 'center',
+    maxWidth: '100%',
   },
   row: {
     flexDirection: 'row',
@@ -140,7 +151,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cellError,
   },
   cellText: {
-    fontSize: 20,
     fontWeight: '600',
     color: Colors.numberNormal,
   },
