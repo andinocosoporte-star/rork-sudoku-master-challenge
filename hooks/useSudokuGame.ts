@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { trpc } from '@/lib/trpc';
 
 interface SudokuLevel {
   level: number;
@@ -13,6 +14,7 @@ interface SelectedCell {
 }
 
 export function useSudokuGame(level: SudokuLevel | null) {
+  const saveProgressMutation = trpc.game.saveProgress.useMutation();
   // Memoize initial grid to prevent unnecessary re-renders
   const initialGrid = useMemo(() => {
     if (!level) {
@@ -120,8 +122,16 @@ export function useSudokuGame(level: SudokuLevel | null) {
     
     if (isFull && hasNoErrors && !isComplete) {
       setIsComplete(true);
+      
+      if (level) {
+        saveProgressMutation.mutate({
+          level: level.level,
+          time: timer,
+          hintsUsed,
+        });
+      }
     }
-  }, [grid, isValidMove, isComplete]);
+  }, [grid, isValidMove, isComplete, level, timer, hintsUsed, saveProgressMutation]);
 
   const checkSolution = useCallback(() => {
     if (!level) return false;
@@ -141,21 +151,22 @@ export function useSudokuGame(level: SudokuLevel | null) {
     setHintsUsed(prev => prev + 1);
   }, [selectedCell, level, hintsUsed, updateCell]);
 
-  // Get available numbers for selected cell
   const availableNumbers = useMemo(() => {
-    if (!selectedCell) return [];
+    if (!selectedCell || !level) return [];
     
     const { row, col } = selectedCell;
-    const available: number[] = [];
+    const correctNumber = level.solution[row][col];
     
-    for (let num = 1; num <= 9; num++) {
-      if (isValidMove(grid, row, col, num)) {
-        available.push(num);
-      }
-    }
+    const allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const otherNumbers = allNumbers.filter(n => n !== correctNumber);
     
-    return available;
-  }, [selectedCell, grid, isValidMove]);
+    const shuffled = otherNumbers.sort(() => Math.random() - 0.5);
+    const randomOptions = shuffled.slice(0, 4);
+    
+    const options = [correctNumber, ...randomOptions].sort(() => Math.random() - 0.5);
+    
+    return options;
+  }, [selectedCell, level]);
 
   return {
     grid,
