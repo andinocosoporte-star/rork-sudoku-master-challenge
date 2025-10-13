@@ -131,7 +131,8 @@ export function useSudokuGame(level: SudokuLevel | null) {
         });
       }
     }
-  }, [grid, isValidMove, isComplete, level, timer, hintsUsed, saveProgressMutation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grid, isValidMove, isComplete, level, timer, hintsUsed]);
 
   const checkSolution = useCallback(() => {
     if (!level) return false;
