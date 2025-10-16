@@ -145,29 +145,60 @@ export function useSudokuGame(level: SudokuLevel | null) {
     if (!selectedCell || !level || hintsUsed >= 3) return;
     
     const { row, col } = selectedCell;
-    if (level.puzzle[row][col] !== 0) return; // Can't hint on original cells
+    if (level.puzzle[row][col] !== 0) return;
     
     const solution = level.solution[row][col];
     updateCell(row, col, solution);
     setHintsUsed(prev => prev + 1);
   }, [selectedCell, level, hintsUsed, updateCell]);
 
-  const availableNumbers = useMemo(() => {
-    if (!selectedCell || !level) return [];
+  const completionPercentage = useMemo(() => {
+    if (!level) return 0;
     
-    const { row, col } = selectedCell;
-    const correctNumber = level.solution[row][col];
+    let totalCells = 0;
+    let correctCells = 0;
     
-    const allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    const otherNumbers = allNumbers.filter(n => n !== correctNumber);
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (level.puzzle[i][j] === 0) {
+          totalCells++;
+          if (grid[i][j] !== 0 && grid[i][j] === level.solution[i][j]) {
+            correctCells++;
+          }
+        }
+      }
+    }
     
-    const shuffled = otherNumbers.sort(() => Math.random() - 0.5);
-    const randomOptions = shuffled.slice(0, 4);
+    return totalCells > 0 ? (correctCells / totalCells) * 100 : 0;
+  }, [grid, level]);
+
+  const shouldShowHints = completionPercentage >= 50;
+
+  const numberCounts = useMemo(() => {
+    if (!level || !shouldShowHints) return {};
     
-    const options = [correctNumber, ...randomOptions].sort(() => Math.random() - 0.5);
+    const counts: Record<number, { inGrid: number; total: number }> = {};
     
-    return options;
-  }, [selectedCell, level]);
+    for (let num = 1; num <= 9; num++) {
+      let total = 0;
+      let inGrid = 0;
+      
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          if (level.solution[i][j] === num) {
+            total++;
+            if (grid[i][j] === num) {
+              inGrid++;
+            }
+          }
+        }
+      }
+      
+      counts[num] = { inGrid, total };
+    }
+    
+    return counts;
+  }, [grid, level, shouldShowHints]);
 
   return {
     grid,
@@ -176,7 +207,9 @@ export function useSudokuGame(level: SudokuLevel | null) {
     errors,
     timer,
     hintsUsed,
-    availableNumbers,
+    numberCounts,
+    completionPercentage,
+    shouldShowHints,
     setSelectedCell,
     updateCell,
     resetGame,

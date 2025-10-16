@@ -24,11 +24,12 @@ export default function GameScreen() {
     errors,
     timer,
     hintsUsed,
-    availableNumbers,
+    numberCounts,
+    shouldShowHints,
     setSelectedCell,
     updateCell,
     resetGame,
-
+    useHint,
   } = useSudokuGame(currentLevel);
 
 
@@ -52,15 +53,7 @@ export default function GameScreen() {
     }
   };
 
-  const handleHint = () => {
-    if (!selectedCell || !currentLevel || hintsUsed >= 3) return;
-    
-    const { row, col } = selectedCell;
-    if (currentLevel.puzzle[row][col] !== 0) return;
-    
-    const solution = currentLevel.solution[row][col];
-    updateCell(row, col, solution);
-  };
+
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -118,7 +111,7 @@ export default function GameScreen() {
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                  onPress={handleHint}
+                  onPress={useHint}
                   disabled={!selectedCell || hintsUsed >= 3}
                 >
                   <View style={[
@@ -143,7 +136,8 @@ export default function GameScreen() {
                 onNumberSelect={handleNumberSelect}
                 selectedNumber={selectedCell ? grid[selectedCell.row][selectedCell.col] : 0}
                 disabled={!selectedCell}
-                availableNumbers={availableNumbers}
+                numberCounts={numberCounts}
+                shouldShowHints={shouldShowHints}
               />
             </View>
           </View>
@@ -166,7 +160,7 @@ export default function GameScreen() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                onPress={handleHint}
+                onPress={useHint}
                 disabled={!selectedCell || hintsUsed >= 3}
               >
                 <View style={[
@@ -189,7 +183,8 @@ export default function GameScreen() {
               onNumberSelect={handleNumberSelect}
               selectedNumber={selectedCell ? grid[selectedCell.row][selectedCell.col] : 0}
               disabled={!selectedCell}
-              availableNumbers={availableNumbers}
+              numberCounts={numberCounts}
+              shouldShowHints={shouldShowHints}
             />
           </View>
         )}

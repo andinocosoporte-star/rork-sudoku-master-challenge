@@ -10,14 +10,16 @@ interface NumberPadProps {
   onNumberSelect: (number: number) => void;
   selectedNumber: number;
   disabled: boolean;
-  availableNumbers?: number[];
+  numberCounts?: Record<number, { inGrid: number; total: number }>;
+  shouldShowHints?: boolean;
 }
 
 const NumberPad = memo(function NumberPad({ 
   onNumberSelect, 
   selectedNumber, 
   disabled, 
-  availableNumbers = [] 
+  numberCounts = {},
+  shouldShowHints = false
 }: NumberPadProps) {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
@@ -42,14 +44,14 @@ const NumberPad = memo(function NumberPad({
 
   const renderNumberButton = useCallback((number: number) => {
     const isSelected = selectedNumber === number;
-    const isAvailable = availableNumbers.length === 0 || availableNumbers.includes(number);
-    const isDisabled = disabled || !isAvailable;
+    const counts = numberCounts[number];
+    const isComplete = shouldShowHints && counts && counts.inGrid >= counts.total;
 
     return (
       <TouchableOpacity
         key={number}
         onPress={() => onNumberSelect(number)}
-        disabled={isDisabled}
+        disabled={disabled || isComplete}
         activeOpacity={0.7}
         testID={`number-${number}`}
       >
@@ -58,23 +60,21 @@ const NumberPad = memo(function NumberPad({
             styles.numberButton,
             { width: buttonSize, height: buttonSize },
             isSelected && styles.selectedNumberButton,
-            isDisabled && styles.disabledButton,
-            !isAvailable && styles.unavailableButton,
+            isComplete && styles.completedButton,
           ]}
         >
           <Text style={[
             styles.numberText,
             { fontSize: textSize },
             isSelected && styles.selectedNumberText,
-            isDisabled && styles.disabledText,
-            !isAvailable && styles.unavailableText,
+            isComplete && styles.completedText,
           ]}>
             {number}
           </Text>
         </View>
       </TouchableOpacity>
     );
-  }, [buttonSize, textSize, selectedNumber, disabled, availableNumbers, onNumberSelect]);
+  }, [buttonSize, textSize, selectedNumber, disabled, numberCounts, shouldShowHints, onNumberSelect]);
 
   return (
     <View style={styles.backgroundContainer}>
@@ -98,7 +98,6 @@ const NumberPad = memo(function NumberPad({
                 styles.numberButton,
                 styles.eraseButton,
                 { width: buttonSize, height: buttonSize },
-                disabled && styles.disabledButton,
               ]}
             >
               <Eraser size={iconSize} color={disabled ? Colors.textLight : Colors.error} />
@@ -149,13 +148,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primaryDark,
   },
-  disabledButton: {
+  completedButton: {
     backgroundColor: Colors.gray100,
     borderColor: Colors.gray200,
-  },
-  unavailableButton: {
-    backgroundColor: Colors.cellError,
-    borderColor: Colors.error,
+    opacity: 0.5,
   },
   eraseButton: {
     backgroundColor: Colors.errorLight,
@@ -169,12 +165,8 @@ const styles = StyleSheet.create({
     color: Colors.textWhite,
     fontWeight: '700',
   },
-  disabledText: {
+  completedText: {
     color: Colors.textLight,
     fontWeight: '500',
-  },
-  unavailableText: {
-    color: Colors.error,
-    fontWeight: '600',
   },
 });
