@@ -14,7 +14,11 @@ interface SelectedCell {
 }
 
 export function useSudokuGame(level: SudokuLevel | null) {
-  const saveProgressMutation = trpc.game.saveProgress.useMutation();
+  const saveProgressMutation = trpc.game.saveProgress.useMutation({
+    onError: (error) => {
+      console.error('Error saving progress:', error);
+    },
+  });
   // Memoize initial grid to prevent unnecessary re-renders
   const initialGrid = useMemo(() => {
     if (!level) {
@@ -115,24 +119,29 @@ export function useSudokuGame(level: SudokuLevel | null) {
     }
     
     setErrors(newErrors);
+  }, [grid, isValidMove]);
 
-    // Check if puzzle is complete
-    const isFull = grid.every(row => row.every(cell => cell !== 0));
-    const hasNoErrors = newErrors.every(row => row.every(cell => !cell));
+  // Separate effect for completion check
+  useEffect(() => {
+    if (isComplete) return;
     
-    if (isFull && hasNoErrors && !isComplete) {
+    const isFull = grid.every(row => row.every(cell => cell !== 0));
+    const hasNoErrors = errors.every(row => row.every(cell => !cell));
+    
+    if (isFull && hasNoErrors && level) {
       setIsComplete(true);
       
-      if (level) {
+      try {
         saveProgressMutation.mutate({
           level: level.level,
           time: timer,
           hintsUsed,
         });
+      } catch (error) {
+        console.error('Failed to save progress:', error);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grid, isValidMove, isComplete, level, timer, hintsUsed]);
+  }, [grid, errors, isComplete, level, timer, hintsUsed, saveProgressMutation]);
 
   const checkSolution = useCallback(() => {
     if (!level) return false;
