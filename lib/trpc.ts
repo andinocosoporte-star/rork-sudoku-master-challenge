@@ -10,6 +10,12 @@ const getBaseUrl = () => {
     return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   }
 
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    console.log('[tRPC] Using window origin:', origin);
+    return origin;
+  }
+
   console.warn("No base url found, using fallback");
   return "http://localhost:3000";
 };
