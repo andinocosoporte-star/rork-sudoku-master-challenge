@@ -16,10 +16,10 @@ interface SelectedCell {
 export function useSudokuGame(level: SudokuLevel | null) {
   const saveProgressMutation = trpc.game.saveProgress.useMutation({
     onSuccess: (data) => {
-      console.log('Progress saved successfully:', data);
+      console.log('✅ Progress saved successfully:', data);
     },
     onError: (error) => {
-      console.error('Error saving progress:', error);
+      console.warn('⚠️ Could not save progress (backend unavailable):', error.message);
     },
   });
   
