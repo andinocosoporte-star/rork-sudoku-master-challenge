@@ -1,12 +1,6 @@
 import { publicProcedure } from "@/backend/trpc/create-context";
 import { z } from "zod";
-
-const progressStore = new Map<string, {
-  level: number;
-  completedAt: Date;
-  time: number;
-  hintsUsed: number;
-}[]>();
+import { progressStore } from "@/backend/trpc/shared/progress-store";
 
 export const getProgressProcedure = publicProcedure
   .input(

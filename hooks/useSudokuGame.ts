@@ -15,6 +15,9 @@ interface SelectedCell {
 
 export function useSudokuGame(level: SudokuLevel | null) {
   const saveProgressMutation = trpc.game.saveProgress.useMutation({
+    onSuccess: (data) => {
+      console.log('Progress saved successfully:', data);
+    },
     onError: (error) => {
       console.error('Error saving progress:', error);
     },
@@ -131,15 +134,18 @@ export function useSudokuGame(level: SudokuLevel | null) {
     if (isFull && hasNoErrors && level) {
       setIsComplete(true);
       
-      try {
-        saveProgressMutation.mutate({
-          level: level.level,
-          time: timer,
-          hintsUsed,
-        });
-      } catch (error) {
-        console.error('Failed to save progress:', error);
-      }
+      console.log('Level completed! Saving progress:', {
+        level: level.level,
+        time: timer,
+        hintsUsed,
+      });
+      
+      saveProgressMutation.mutate({
+        userId: 'guest',
+        level: level.level,
+        time: timer,
+        hintsUsed,
+      });
     }
   }, [grid, errors, isComplete, level, timer, hintsUsed, saveProgressMutation]);
 

@@ -1,25 +1,83 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Clock, Target, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { trpc } from '@/lib/trpc';
 
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
-  const stats = [
-    { icon: Trophy, label: 'Completed', value: '0/100', color: '#f59e0b' },
-    { icon: Clock, label: 'Total Time', value: '00:00', color: '#3b82f6' },
-    { icon: Target, label: 'Best Time', value: '--:--', color: '#10b981' },
-    { icon: Zap, label: 'Streak', value: '0', color: '#8b5cf6' },
-  ];
+  
+  const progressQuery = trpc.game.getProgress.useQuery({ userId: 'guest' });
+  
+  const progress = progressQuery.data;
+  
+  const stats = useMemo(() => {
+    if (!progress) {
+      return [
+        { icon: Trophy, label: 'Completed', value: '0/100', color: '#f59e0b' },
+        { icon: Clock, label: 'Total Time', value: '00:00', color: '#3b82f6' },
+        { icon: Target, label: 'Best Time', value: '--:--', color: '#10b981' },
+        { icon: Zap, label: 'Streak', value: '0', color: '#8b5cf6' },
+      ];
+    }
+    
+    const totalTime = progress.completedLevels.reduce((sum, level) => sum + level.time, 0);
+    const hours = Math.floor(totalTime / 3600);
+    const minutes = Math.floor((totalTime % 3600) / 60);
+    const totalTimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    
+    const bestTime = progress.completedLevels.length > 0 
+      ? Math.min(...progress.completedLevels.map(l => l.time))
+      : 0;
+    const bestMinutes = Math.floor(bestTime / 60);
+    const bestSeconds = bestTime % 60;
+    const bestTimeStr = bestTime > 0 ? `${bestMinutes}:${bestSeconds.toString().padStart(2, '0')}` : '--:--';
+    
+    return [
+      { icon: Trophy, label: 'Completed', value: `${progress.totalCompleted}/100`, color: '#f59e0b' },
+      { icon: Clock, label: 'Total Time', value: totalTimeStr, color: '#3b82f6' },
+      { icon: Target, label: 'Best Time', value: bestTimeStr, color: '#10b981' },
+      { icon: Zap, label: 'Streak', value: '0', color: '#8b5cf6' },
+    ];
+  }, [progress]);
 
-  const difficultyStats = [
-    { name: 'Beginner', completed: 0, total: 20, color: '#22c55e' },
-    { name: 'Easy', completed: 0, total: 20, color: '#3b82f6' },
-    { name: 'Medium', completed: 0, total: 20, color: '#f59e0b' },
-    { name: 'Hard', completed: 0, total: 20, color: '#ef4444' },
-    { name: 'Expert', completed: 0, total: 20, color: '#8b5cf6' },
-  ];
+  const difficultyStats = useMemo(() => {
+    if (!progress) {
+      return [
+        { name: 'Beginner', completed: 0, total: 20, color: '#22c55e' },
+        { name: 'Easy', completed: 0, total: 20, color: '#3b82f6' },
+        { name: 'Medium', completed: 0, total: 20, color: '#f59e0b' },
+        { name: 'Hard', completed: 0, total: 20, color: '#ef4444' },
+        { name: 'Expert', completed: 0, total: 20, color: '#8b5cf6' },
+      ];
+    }
+    
+    const levelsByDifficulty = {
+      beginner: 0,
+      easy: 0,
+      medium: 0,
+      hard: 0,
+      expert: 0,
+    };
+    
+    progress.completedLevels.forEach(level => {
+      const levelNum = level.level;
+      if (levelNum <= 20) levelsByDifficulty.beginner++;
+      else if (levelNum <= 40) levelsByDifficulty.easy++;
+      else if (levelNum <= 60) levelsByDifficulty.medium++;
+      else if (levelNum <= 80) levelsByDifficulty.hard++;
+      else levelsByDifficulty.expert++;
+    });
+    
+    return [
+      { name: 'Beginner', completed: levelsByDifficulty.beginner, total: 20, color: '#22c55e' },
+      { name: 'Easy', completed: levelsByDifficulty.easy, total: 20, color: '#3b82f6' },
+      { name: 'Medium', completed: levelsByDifficulty.medium, total: 20, color: '#f59e0b' },
+      { name: 'Hard', completed: levelsByDifficulty.hard, total: 20, color: '#ef4444' },
+      { name: 'Expert', completed: levelsByDifficulty.expert, total: 20, color: '#8b5cf6' },
+    ];
+  }, [progress]);
 
   return (
     <View style={styles.container}>
