@@ -26,8 +26,13 @@ app.use(
   trpcServer({
     router: appRouter,
     createContext,
-    onError({ error, path }) {
-      console.error(`[tRPC Error] path: ${path}`, error);
+    onError({ error, path, type }) {
+      console.error(`[tRPC Error] type: ${type}, path: ${path}`);
+      console.error('[tRPC Error] details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
     },
   })
 );

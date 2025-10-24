@@ -55,14 +55,21 @@ export const trpcClient = trpc.createClient({
             console.error('[tRPC] Error response:', {
               status: response.status,
               statusText: response.statusText,
-              body: text.substring(0, 300)
+              body: text.substring(0, 500)
             });
+            
+            if (response.status === 404) {
+              throw new Error(`tRPC endpoint not found. Make sure the backend is running at ${baseUrl}`);
+            }
           }
           
           return response;
         } catch (error) {
           console.error('[tRPC] Network error:', error);
-          throw error;
+          if (error instanceof Error) {
+            throw error;
+          }
+          throw new Error(String(error));
         }
       },
     }),

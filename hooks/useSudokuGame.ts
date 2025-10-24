@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 
 interface SudokuLevel {
@@ -19,11 +19,13 @@ export function useSudokuGame(level: SudokuLevel | null) {
       console.log('✅ Progress saved successfully:', data);
     },
     onError: (error) => {
-      console.error('❌ Failed to save progress:', error.message);
+      console.error('❌ Failed to save progress:', error);
+      console.error('❌ Error message:', error.message);
+      if (error.data) {
+        console.error('❌ Error data:', error.data);
+      }
     },
   });
-  
-  const mutationRef = useRef(saveProgressMutation);
   // Memoize initial grid to prevent unnecessary re-renders
   const initialGrid = useMemo(() => {
     if (!level) {
@@ -126,10 +128,6 @@ export function useSudokuGame(level: SudokuLevel | null) {
     setErrors(newErrors);
   }, [grid, isValidMove]);
 
-  useEffect(() => {
-    mutationRef.current = saveProgressMutation;
-  }, [saveProgressMutation]);
-
   // Separate effect for completion check
   useEffect(() => {
     if (isComplete) return;
@@ -140,20 +138,20 @@ export function useSudokuGame(level: SudokuLevel | null) {
     if (isFull && hasNoErrors && level) {
       setIsComplete(true);
       
-      console.log('Level completed! Saving progress:', {
+      console.log('🎉 Level completed! Saving progress:', {
         level: level.level,
         time: timer,
         hintsUsed,
       });
       
-      mutationRef.current.mutate({
+      saveProgressMutation.mutate({
         userId: 'guest',
         level: level.level,
         time: timer,
         hintsUsed,
       });
     }
-  }, [grid, errors, isComplete, level, timer, hintsUsed]);
+  }, [grid, errors, isComplete, level, timer, hintsUsed, saveProgressMutation]);
 
   const checkSolution = useCallback(() => {
     if (!level) return false;
