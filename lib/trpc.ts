@@ -44,14 +44,17 @@ export const trpcClient = trpc.createClient({
       },
       async fetch(url, options) {
         if (!baseUrl || !trpcUrl) {
-          console.warn('[tRPC] Backend not configured, skipping request');
           return new Response(
-            JSON.stringify({ error: 'Backend not configured' }),
+            JSON.stringify({ 
+              error: { 
+                message: 'Backend not configured', 
+                data: { httpStatus: 503 }, 
+                code: 'BACKEND_NOT_CONFIGURED' 
+              } 
+            }),
             { status: 503, headers: { 'Content-Type': 'application/json' } }
           );
         }
-
-        console.log('[tRPC] Request:', url);
         
         try {
           const response = await fetch(url, {
@@ -61,30 +64,31 @@ export const trpcClient = trpc.createClient({
             },
           });
           
-          console.log('[tRPC] Response status:', response.status);
-          
-          if (!response.ok) {
-            const text = await response.clone().text();
-            console.error('[tRPC] Error response:', {
-              status: response.status,
-              statusText: response.statusText,
-              body: text.substring(0, 200)
-            });
-            
-            if (response.status === 404) {
-              console.error('[tRPC] ❌ Backend endpoint not found at:', baseUrl);
-              console.error('[tRPC] ❌ Make sure backend is deployed and URL is correct');
-            }
+          if (!response.ok && response.status === 404) {
+            return new Response(
+              JSON.stringify({ 
+                error: { 
+                  message: 'tRPC endpoint not found. Make sure the backend is running at ' + baseUrl,
+                  data: { httpStatus: 404 }, 
+                  code: 'NOT_FOUND' 
+                } 
+              }),
+              { status: 404, headers: { 'Content-Type': 'application/json' } }
+            );
           }
           
           return response;
         } catch (error) {
-          console.error('[tRPC] Network error:', error);
-          console.error('[tRPC] Failed to connect to:', baseUrl);
-          if (error instanceof Error) {
-            throw error;
-          }
-          throw new Error(String(error));
+          return new Response(
+            JSON.stringify({ 
+              error: { 
+                message: error instanceof Error ? error.message : String(error),
+                data: { httpStatus: 500 }, 
+                code: 'NETWORK_ERROR' 
+              } 
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          );
         }
       },
     }),

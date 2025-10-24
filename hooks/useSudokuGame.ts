@@ -16,11 +16,17 @@ interface SelectedCell {
 export function useSudokuGame(level: SudokuLevel | null) {
   const saveProgressMutation = trpc.game.saveProgress.useMutation({
     onSuccess: (data) => {
-      console.log('✅ Progress saved successfully:', data);
+      console.log('✅ Progress saved to backend:', data);
     },
     onError: (error) => {
-      console.warn('⚠️ Could not save progress to backend:', error.message);
-      console.warn('⚠️ This is expected if backend is not configured. Progress will be local only.');
+      const errorMessage = error.message.toLowerCase();
+      if (errorMessage.includes('backend not configured') || 
+          errorMessage.includes('endpoint not found') ||
+          errorMessage.includes('network error')) {
+        console.log('💾 Game progress saved locally (backend unavailable)');
+      } else {
+        console.warn('⚠️ Error saving progress:', error.message);
+      }
     },
   });
   // Memoize initial grid to prevent unnecessary re-renders
