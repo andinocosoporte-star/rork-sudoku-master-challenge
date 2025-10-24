@@ -8,9 +8,24 @@ import { trpc } from '@/lib/trpc';
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   
-  const progressQuery = trpc.game.getProgress.useQuery({ userId: 'guest' });
+  const progressQuery = trpc.game.getProgress.useQuery(
+    { userId: 'guest' },
+    {
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+    }
+  );
   
   const progress = progressQuery.data;
+  
+  console.log('[Stats] Progress query status:', {
+    isLoading: progressQuery.isLoading,
+    isError: progressQuery.isError,
+    error: progressQuery.error?.message,
+    dataReceived: !!progress,
+    completedLevels: progress?.completedLevels.length || 0,
+    totalCompleted: progress?.totalCompleted || 0,
+  });
   
   const stats = useMemo(() => {
     if (!progress) {

@@ -11,7 +11,10 @@ export const getProgressProcedure = publicProcedure
   .query(async ({ input }) => {
     try {
       const { userId } = input;
-      console.log(`[getProgress] Fetching progress for ${userId}`);
+      
+      console.log(`\n=== [getProgress] REQUEST RECEIVED ===`);
+      console.log(`User: ${userId}`);
+      console.log(`Progress store size: ${progressStore.size} users`);
       
       const userProgress = progressStore.get(userId) || [];
       
@@ -21,11 +24,17 @@ export const getProgressProcedure = publicProcedure
         highestLevel: userProgress.length > 0 ? Math.max(...userProgress.map(p => p.level)) : 0,
       };
       
-      console.log(`[getProgress] Found ${result.totalCompleted} completed levels`);
+      console.log(`[getProgress] ✅ Found ${result.totalCompleted} completed levels`);
+      if (result.totalCompleted > 0) {
+        console.log(`Levels completed: ${userProgress.map(p => p.level).join(', ')}`);
+      }
+      console.log(`=== END [getProgress] ===\n`);
       
       return result;
     } catch (error) {
-      console.error('[getProgress] Error:', error);
+      console.error('\n=== [getProgress] ❌ ERROR ===');
+      console.error(error);
+      console.error('=== END [getProgress] ERROR ===\n');
       throw error;
     }
   });

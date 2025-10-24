@@ -14,11 +14,16 @@ interface SelectedCell {
 }
 
 export function useSudokuGame(level: SudokuLevel | null) {
+  const utils = trpc.useUtils();
+  
   const saveProgressMutation = trpc.game.saveProgress.useMutation({
     onSuccess: (data) => {
       console.log('✅ Progress saved to backend:', data);
+      // Invalidate and refetch progress query
+      utils.game.getProgress.invalidate({ userId: 'guest' });
     },
     onError: (error) => {
+      console.error('❌ Error saving progress:', error);
       const errorMessage = error.message.toLowerCase();
       if (errorMessage.includes('backend not configured') || 
           errorMessage.includes('endpoint not found') ||
@@ -141,22 +146,17 @@ export function useSudokuGame(level: SudokuLevel | null) {
     if (isFull && hasNoErrors && level) {
       setIsComplete(true);
       
-      console.log('🎉 Level completed!', {
+      const progressData = {
+        userId: 'guest',
         level: level.level,
         time: timer,
         hintsUsed,
-      });
+      };
       
-      try {
-        saveProgressMutation.mutate({
-          userId: 'guest',
-          level: level.level,
-          time: timer,
-          hintsUsed,
-        });
-      } catch (error) {
-        console.warn('⚠️ Could not save progress:', error);
-      }
+      console.log('🎉 Level completed!', progressData);
+      console.log('📤 Attempting to save progress...');
+      
+      saveProgressMutation.mutate(progressData);
     }
   }, [grid, errors, isComplete, level, timer, hintsUsed, saveProgressMutation]);
 

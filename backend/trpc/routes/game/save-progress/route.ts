@@ -15,30 +15,39 @@ export const saveProgressProcedure = publicProcedure
     try {
       const { userId, level, time, hintsUsed } = input;
       
-      console.log(`[saveProgress] Saving progress for ${userId}, level ${level}`);
+      console.log(`\n=== [saveProgress] REQUEST RECEIVED ===`);
+      console.log(`User: ${userId}, Level: ${level}, Time: ${time}s, Hints: ${hintsUsed}`);
       
-      const userProgress = progressStore.get(userId) || [];
+      const currentProgress = progressStore.get(userId) || [];
+      console.log(`Current progress count: ${currentProgress.length}`);
       
-      userProgress.push({
+      const newEntry = {
         level,
         completedAt: new Date(),
         time,
         hintsUsed,
-      });
+      };
       
-      progressStore.set(userId, userProgress);
+      currentProgress.push(newEntry);
+      progressStore.set(userId, currentProgress);
+      
+      console.log(`New progress count: ${currentProgress.length}`);
+      console.log(`Progress store size: ${progressStore.size} users`);
       
       const result = {
         success: true,
-        totalCompleted: userProgress.length,
-        highestLevel: Math.max(...userProgress.map(p => p.level)),
+        totalCompleted: currentProgress.length,
+        highestLevel: Math.max(...currentProgress.map(p => p.level)),
       };
       
-      console.log(`[saveProgress] Success:`, result);
+      console.log(`[saveProgress] ✅ SUCCESS:`, result);
+      console.log(`=== END [saveProgress] ===\n`);
       
       return result;
     } catch (error) {
-      console.error('[saveProgress] Error:', error);
+      console.error('\n=== [saveProgress] ❌ ERROR ===');
+      console.error(error);
+      console.error('=== END [saveProgress] ERROR ===\n');
       throw error;
     }
   });

@@ -12,13 +12,17 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
-      staleTime: 60000,
-      refetchOnWindowFocus: false,
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
     },
     mutations: {
       retry: false,
       onError: (error) => {
         console.warn('[Mutation Error]', error);
+      },
+      onSuccess: () => {
+        console.log('✅ [Mutation Success]');
       },
     },
   },
