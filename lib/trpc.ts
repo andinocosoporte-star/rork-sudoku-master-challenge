@@ -7,8 +7,9 @@ export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
-    console.log('[tRPC] Using EXPO_PUBLIC_RORK_API_BASE_URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
-    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+    const url = process.env.EXPO_PUBLIC_RORK_API_BASE_URL.replace(/\/$/, '');
+    console.log('[tRPC] Using EXPO_PUBLIC_RORK_API_BASE_URL:', url);
+    return url;
   }
 
   if (typeof window !== 'undefined') {
@@ -21,29 +22,48 @@ const getBaseUrl = () => {
   return "http://localhost:8081";
 };
 
+const baseUrl = getBaseUrl();
+const trpcUrl = `${baseUrl}/api/trpc`;
+
+console.log('[tRPC] Initializing client with URL:', trpcUrl);
+
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
-      url: `${getBaseUrl()}/api/trpc`,
+      url: trpcUrl,
       transformer: superjson,
+      headers: () => {
+        return {
+          "x-trpc-source": "react-native",
+        };
+      },
       async fetch(url, options) {
-        console.log('[tRPC] Making request to:', url);
+        console.log('[tRPC] Request:', url);
         
-        const response = await fetch(url, {
-          ...options,
-          headers: {
-            ...options?.headers,
-            "Content-Type": "application/json",
-          },
-        });
-        
-        if (!response.ok) {
-          console.error('[tRPC] Request failed:', response.status, response.statusText);
-          const text = await response.clone().text();
-          console.error('[tRPC] Response body:', text.substring(0, 500));
+        try {
+          const response = await fetch(url, {
+            ...options,
+            headers: {
+              ...options?.headers,
+            },
+          });
+          
+          console.log('[tRPC] Response status:', response.status);
+          
+          if (!response.ok) {
+            const text = await response.clone().text();
+            console.error('[tRPC] Error response:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: text.substring(0, 300)
+            });
+          }
+          
+          return response;
+        } catch (error) {
+          console.error('[tRPC] Network error:', error);
+          throw error;
         }
-        
-        return response;
       },
     }),
   ],

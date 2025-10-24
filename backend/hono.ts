@@ -9,8 +9,17 @@ const app = new Hono();
 app.use("*", cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
+  credentials: true,
 }));
+
+app.get("/", (c) => {
+  return c.json({ status: "ok", message: "Sudoku API is running", timestamp: new Date().toISOString() });
+});
+
+app.get("/api", (c) => {
+  return c.json({ status: "ok", message: "API endpoint is working", timestamp: new Date().toISOString() });
+});
 
 app.use(
   "/api/trpc/*",
@@ -23,17 +32,14 @@ app.use(
   })
 );
 
-app.get("/", (c) => {
-  return c.json({ status: "ok", message: "API is running" });
-});
-
-app.get("/api", (c) => {
-  return c.json({ status: "ok", message: "API endpoint is working" });
+app.notFound((c) => {
+  console.log(`[404] ${c.req.method} ${c.req.url}`);
+  return c.json({ error: "Not found", path: c.req.url }, 404);
 });
 
 app.onError((err, c) => {
   console.error('[Hono Error]', err);
-  return c.json({ error: err.message }, 500);
+  return c.json({ error: err.message, stack: process.env.NODE_ENV === 'development' ? err.stack : undefined }, 500);
 });
 
 export default app;

@@ -19,7 +19,7 @@ export function useSudokuGame(level: SudokuLevel | null) {
       console.log('✅ Progress saved successfully:', data);
     },
     onError: (error) => {
-      console.warn('⚠️ Could not save progress (backend unavailable):', error.message);
+      console.error('❌ Failed to save progress:', error.message);
     },
   });
   
