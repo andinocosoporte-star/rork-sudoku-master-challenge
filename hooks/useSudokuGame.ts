@@ -19,11 +19,8 @@ export function useSudokuGame(level: SudokuLevel | null) {
       console.log('✅ Progress saved successfully:', data);
     },
     onError: (error) => {
-      console.error('❌ Failed to save progress:', error);
-      console.error('❌ Error message:', error.message);
-      if (error.data) {
-        console.error('❌ Error data:', error.data);
-      }
+      console.warn('⚠️ Could not save progress to backend:', error.message);
+      console.warn('⚠️ This is expected if backend is not configured. Progress will be local only.');
     },
   });
   // Memoize initial grid to prevent unnecessary re-renders
@@ -138,18 +135,22 @@ export function useSudokuGame(level: SudokuLevel | null) {
     if (isFull && hasNoErrors && level) {
       setIsComplete(true);
       
-      console.log('🎉 Level completed! Saving progress:', {
+      console.log('🎉 Level completed!', {
         level: level.level,
         time: timer,
         hintsUsed,
       });
       
-      saveProgressMutation.mutate({
-        userId: 'guest',
-        level: level.level,
-        time: timer,
-        hintsUsed,
-      });
+      try {
+        saveProgressMutation.mutate({
+          userId: 'guest',
+          level: level.level,
+          time: timer,
+          hintsUsed,
+        });
+      } catch (error) {
+        console.warn('⚠️ Could not save progress:', error);
+      }
     }
   }, [grid, errors, isComplete, level, timer, hintsUsed, saveProgressMutation]);
 

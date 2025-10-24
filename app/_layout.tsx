@@ -13,10 +13,13 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
       staleTime: 60000,
+      refetchOnWindowFocus: false,
     },
     mutations: {
-      retry: 1,
-      retryDelay: 1000,
+      retry: false,
+      onError: (error) => {
+        console.warn('[Mutation Error]', error);
+      },
     },
   },
 });

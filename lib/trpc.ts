@@ -18,14 +18,19 @@ const getBaseUrl = () => {
     return origin;
   }
 
-  console.warn('[tRPC] No base url found, using fallback');
-  return "http://localhost:8081";
+  console.warn('[tRPC] No base url found, backend features will be unavailable');
+  return "";
 };
 
 const baseUrl = getBaseUrl();
-const trpcUrl = `${baseUrl}/api/trpc`;
+const trpcUrl = baseUrl ? `${baseUrl}/api/trpc` : '';
 
-console.log('[tRPC] Initializing client with URL:', trpcUrl);
+if (!baseUrl) {
+  console.warn('[tRPC] ⚠️ Backend URL not configured. Backend features will be unavailable.');
+  console.warn('[tRPC] The app will work in offline mode with local-only features.');
+} else {
+  console.log('[tRPC] Initializing client with URL:', trpcUrl);
+}
 
 export const trpcClient = trpc.createClient({
   links: [
@@ -38,6 +43,14 @@ export const trpcClient = trpc.createClient({
         };
       },
       async fetch(url, options) {
+        if (!baseUrl || !trpcUrl) {
+          console.warn('[tRPC] Backend not configured, skipping request');
+          return new Response(
+            JSON.stringify({ error: 'Backend not configured' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
         console.log('[tRPC] Request:', url);
         
         try {
@@ -55,17 +68,19 @@ export const trpcClient = trpc.createClient({
             console.error('[tRPC] Error response:', {
               status: response.status,
               statusText: response.statusText,
-              body: text.substring(0, 500)
+              body: text.substring(0, 200)
             });
             
             if (response.status === 404) {
-              throw new Error(`tRPC endpoint not found. Make sure the backend is running at ${baseUrl}`);
+              console.error('[tRPC] ❌ Backend endpoint not found at:', baseUrl);
+              console.error('[tRPC] ❌ Make sure backend is deployed and URL is correct');
             }
           }
           
           return response;
         } catch (error) {
           console.error('[tRPC] Network error:', error);
+          console.error('[tRPC] Failed to connect to:', baseUrl);
           if (error instanceof Error) {
             throw error;
           }
