@@ -29,7 +29,7 @@ export const getProgressProcedure = publicProcedure
       const result = {
         completedLevels: userProgress.map(entry => ({
           level: entry.level,
-          completedAt: new Date(entry.completedAt),
+          completedAt: entry.completedAt,
           time: entry.time,
           hintsUsed: entry.hintsUsed,
         })),
