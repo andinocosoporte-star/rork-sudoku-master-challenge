@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Clock, Target, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,10 +11,16 @@ export default function StatsScreen() {
   const progressQuery = trpc.game.getProgress.useQuery(
     { userId: 'guest' },
     {
-      refetchOnMount: true,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      staleTime: 0,
     }
   );
+  
+  const onRefresh = useCallback(() => {
+    progressQuery.refetch();
+  }, [progressQuery]);
   
   const progress = progressQuery.data;
   
@@ -104,7 +110,17 @@ export default function StatsScreen() {
         <Text style={styles.subtitle}>Track your Sudoku journey</Text>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={progressQuery.isFetching} 
+            onRefresh={onRefresh}
+            tintColor="#667eea"
+          />
+        }
+      >
         <View style={styles.statsGrid}>
           {stats.map((stat, index) => (
             <View key={index} style={styles.statCard}>

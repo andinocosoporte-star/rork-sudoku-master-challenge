@@ -17,10 +17,10 @@ export function useSudokuGame(level: SudokuLevel | null) {
   const utils = trpc.useUtils();
   
   const saveProgressMutation = trpc.game.saveProgress.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Progress saved to backend:', data);
-      // Invalidate and refetch progress query
-      utils.game.getProgress.invalidate({ userId: 'guest' });
+      await utils.game.getProgress.invalidate({ userId: 'guest' });
+      await utils.game.getProgress.refetch({ userId: 'guest' });
     },
     onError: (error) => {
       console.error('❌ Error saving progress:', error);
