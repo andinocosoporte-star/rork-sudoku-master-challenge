@@ -30,17 +30,17 @@ export const saveProgressProcedure = publicProcedure
       const countStmt = db.prepare(`
         SELECT COUNT(*) as count FROM progress WHERE userId = ?
       `);
-      const countResult = countStmt.get(userId) as { count: number };
+      const countResult = countStmt.get(userId) as { count: number | bigint };
       
       const maxLevelStmt = db.prepare(`
         SELECT MAX(level) as maxLevel FROM progress WHERE userId = ?
       `);
-      const maxLevelResult = maxLevelStmt.get(userId) as { maxLevel: number | null };
+      const maxLevelResult = maxLevelStmt.get(userId) as { maxLevel: number | bigint | null };
       
       const response = {
         success: true,
-        totalCompleted: countResult.count,
-        highestLevel: maxLevelResult.maxLevel || 0,
+        totalCompleted: Number(countResult.count),
+        highestLevel: maxLevelResult.maxLevel ? Number(maxLevelResult.maxLevel) : 0,
       };
       
       console.log(`[saveProgress] ✅ SUCCESS:`, response);
