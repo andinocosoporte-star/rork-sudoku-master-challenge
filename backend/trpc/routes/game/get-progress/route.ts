@@ -1,6 +1,6 @@
 import { publicProcedure } from "@/backend/trpc/create-context";
 import { z } from "zod";
-import { progressStore } from "@/backend/trpc/shared/progress-store";
+import { db, type ProgressEntry } from "@/backend/trpc/shared/db";
 
 export const getProgressProcedure = publicProcedure
   .input(
@@ -14,17 +14,31 @@ export const getProgressProcedure = publicProcedure
       
       console.log(`\n=== [getProgress] REQUEST RECEIVED ===`);
       console.log(`User: ${userId}`);
-      console.log(`Progress store size: ${progressStore.size} users`);
       
-      const userProgress = progressStore.get(userId) || [];
+      const stmt = db.prepare(`
+        SELECT id, userId, level, completedAt, time, hintsUsed
+        FROM progress
+        WHERE userId = ?
+        ORDER BY completedAt DESC
+      `);
+      
+      const userProgress = stmt.all(userId) as ProgressEntry[];
+      
+      console.log(`[getProgress] ✅ Found ${userProgress.length} completed levels from database`);
       
       const result = {
-        completedLevels: userProgress,
+        completedLevels: userProgress.map(entry => ({
+          level: entry.level,
+          completedAt: new Date(entry.completedAt),
+          time: entry.time,
+          hintsUsed: entry.hintsUsed,
+        })),
         totalCompleted: userProgress.length,
-        highestLevel: userProgress.length > 0 ? Math.max(...userProgress.map(p => p.level)) : 0,
+        highestLevel: userProgress.length > 0 
+          ? Math.max(...userProgress.map(p => p.level)) 
+          : 0,
       };
       
-      console.log(`[getProgress] ✅ Found ${result.totalCompleted} completed levels`);
       if (result.totalCompleted > 0) {
         console.log(`Levels completed: ${userProgress.map(p => p.level).join(', ')}`);
       }
