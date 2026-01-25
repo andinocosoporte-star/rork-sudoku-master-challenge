@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { trpc } from '@/lib/trpc';
+import { useProgress } from '@/contexts/ProgressContext';
 
 interface SudokuLevel {
   level: number;
@@ -14,27 +14,8 @@ interface SelectedCell {
 }
 
 export function useSudokuGame(level: SudokuLevel | null) {
-  const utils = trpc.useUtils();
+  const { addCompletedLevel } = useProgress();
   
-  const saveProgressMutation = trpc.game.saveProgress.useMutation({
-    onSuccess: async (data) => {
-      console.log('✅ Progress saved to backend:', data);
-      await utils.game.getProgress.invalidate({ userId: 'guest' });
-      await utils.game.getProgress.refetch({ userId: 'guest' });
-    },
-    onError: (error) => {
-      console.error('❌ Error saving progress:', error);
-      const errorMessage = error.message.toLowerCase();
-      if (errorMessage.includes('backend not configured') || 
-          errorMessage.includes('endpoint not found') ||
-          errorMessage.includes('network error')) {
-        console.log('💾 Game progress saved locally (backend unavailable)');
-      } else {
-        console.warn('⚠️ Error saving progress:', error.message);
-      }
-    },
-  });
-  // Memoize initial grid to prevent unnecessary re-renders
   const initialGrid = useMemo(() => {
     if (!level) {
       return Array(9).fill(null).map(() => Array(9).fill(0));
@@ -61,7 +42,6 @@ export function useSudokuGame(level: SudokuLevel | null) {
     setHintsUsed(0);
   }, [level]);
 
-  // Initialize game when level changes
   useEffect(() => {
     if (level) {
       setGrid(level.puzzle.map(row => [...row]));
@@ -73,7 +53,6 @@ export function useSudokuGame(level: SudokuLevel | null) {
     }
   }, [level]);
 
-  // Timer
   useEffect(() => {
     if (isComplete) return;
     
@@ -84,21 +63,17 @@ export function useSudokuGame(level: SudokuLevel | null) {
     return () => clearInterval(interval);
   }, [isComplete]);
 
-  // Memoize validation function for better performance
   const isValidMove = useCallback((grid: number[][], row: number, col: number, num: number): boolean => {
-    if (num === 0) return true; // Empty cell is always valid
+    if (num === 0) return true;
     
-    // Check row
     for (let i = 0; i < 9; i++) {
       if (i !== col && grid[row][i] === num) return false;
     }
 
-    // Check column
     for (let i = 0; i < 9; i++) {
       if (i !== row && grid[i][col] === num) return false;
     }
 
-    // Check 3x3 box
     const boxRow = Math.floor(row / 3) * 3;
     const boxCol = Math.floor(col / 3) * 3;
     for (let i = boxRow; i < boxRow + 3; i++) {
@@ -111,7 +86,6 @@ export function useSudokuGame(level: SudokuLevel | null) {
   }, []);
 
   const updateCell = useCallback((row: number, col: number, value: number) => {
-    // Don't allow editing original cells
     if (!level || level.puzzle[row][col] !== 0) return;
 
     setGrid(prevGrid => {
@@ -121,7 +95,6 @@ export function useSudokuGame(level: SudokuLevel | null) {
     });
   }, [level]);
 
-  // Separate effect for error checking to optimize performance
   useEffect(() => {
     const newErrors = Array(9).fill(null).map(() => Array(9).fill(false));
     
@@ -136,7 +109,6 @@ export function useSudokuGame(level: SudokuLevel | null) {
     setErrors(newErrors);
   }, [grid, isValidMove]);
 
-  // Separate effect for completion check
   useEffect(() => {
     if (isComplete) return;
     
@@ -146,19 +118,15 @@ export function useSudokuGame(level: SudokuLevel | null) {
     if (isFull && hasNoErrors && level) {
       setIsComplete(true);
       
-      const progressData = {
-        userId: 'guest',
+      console.log('🎉 Level completed!', {
         level: level.level,
         time: timer,
         hintsUsed,
-      };
+      });
       
-      console.log('🎉 Level completed!', progressData);
-      console.log('📤 Attempting to save progress...');
-      
-      saveProgressMutation.mutate(progressData);
+      addCompletedLevel(level.level, timer, hintsUsed);
     }
-  }, [grid, errors, isComplete, level, timer, hintsUsed, saveProgressMutation]);
+  }, [grid, errors, isComplete, level, timer, hintsUsed, addCompletedLevel]);
 
   const checkSolution = useCallback(() => {
     if (!level) return false;

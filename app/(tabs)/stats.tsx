@@ -3,41 +3,27 @@ import { StyleSheet, Text, View, ScrollView, RefreshControl } from 'react-native
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Clock, Target, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { trpc } from '@/lib/trpc';
+import { useProgress } from '@/contexts/ProgressContext';
 
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
-  
-  const progressQuery = trpc.game.getProgress.useQuery(
-    { userId: 'guest' },
-    {
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-      staleTime: 0,
-    }
-  );
+  const { progress, isLoading, isSyncing, refreshProgress } = useProgress();
   
   const onRefresh = useCallback(() => {
-    progressQuery.refetch();
-  }, [progressQuery]);
+    refreshProgress();
+  }, [refreshProgress]);
   
-  const progress = progressQuery.data;
-  
-  console.log('[Stats] Progress query status:', {
-    isLoading: progressQuery.isLoading,
-    isError: progressQuery.isError,
-    error: progressQuery.error?.message,
-    dataReceived: !!progress,
-    completedLevels: progress?.completedLevels.length || 0,
-    totalCompleted: progress?.totalCompleted || 0,
+  console.log('[Stats] Progress:', {
+    isLoading,
+    completedLevels: progress.completedLevels.length,
+    totalCompleted: progress.totalCompleted,
   });
   
   const stats = useMemo(() => {
-    if (!progress) {
+    if (!progress || progress.completedLevels.length === 0) {
       return [
         { icon: Trophy, label: 'Completed', value: '0/100', color: '#f59e0b' },
-        { icon: Clock, label: 'Total Time', value: '00:00', color: '#3b82f6' },
+        { icon: Clock, label: 'Total Time', value: '0m', color: '#3b82f6' },
         { icon: Target, label: 'Best Time', value: '--:--', color: '#10b981' },
         { icon: Zap, label: 'Streak', value: '0', color: '#8b5cf6' },
       ];
@@ -64,7 +50,7 @@ export default function StatsScreen() {
   }, [progress]);
 
   const difficultyStats = useMemo(() => {
-    if (!progress) {
+    if (!progress || progress.completedLevels.length === 0) {
       return [
         { name: 'Beginner', completed: 0, total: 20, color: '#22c55e' },
         { name: 'Easy', completed: 0, total: 20, color: '#3b82f6' },
@@ -115,7 +101,7 @@ export default function StatsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
-            refreshing={progressQuery.isFetching} 
+            refreshing={isLoading || isSyncing} 
             onRefresh={onRefresh}
             tintColor="#667eea"
           />
@@ -160,9 +146,11 @@ export default function StatsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Achievements</Text>
-          <View style={styles.achievementCard}>
+          <View style={[styles.achievementCard, progress.totalCompleted >= 1 && styles.achievementUnlocked]}>
             <Text style={styles.achievementText}>🏆 Complete your first puzzle</Text>
-            <Text style={styles.achievementSubtext}>Solve any Sudoku level</Text>
+            <Text style={styles.achievementSubtext}>
+              {progress.totalCompleted >= 1 ? '✓ Completed!' : 'Solve any Sudoku level'}
+            </Text>
           </View>
           <View style={styles.achievementCard}>
             <Text style={styles.achievementText}>⚡ Speed Solver</Text>
@@ -191,7 +179,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: 'white',
     textAlign: 'center',
     marginBottom: 8,
@@ -234,7 +222,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: '#1e293b',
     marginBottom: 4,
   },
@@ -248,7 +236,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: '#1e293b',
     marginBottom: 16,
   },
@@ -271,13 +259,13 @@ const styles = StyleSheet.create({
   },
   difficultyName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#1e293b',
   },
   difficultyProgress: {
     fontSize: 14,
     color: '#64748b',
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   progressBar: {
     height: 6,
@@ -300,9 +288,14 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  achievementUnlocked: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#22c55e',
+    borderWidth: 1,
+  },
   achievementText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#1e293b',
     marginBottom: 4,
   },

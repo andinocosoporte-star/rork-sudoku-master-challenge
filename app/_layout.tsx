@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ProgressProvider } from "@/contexts/ProgressContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -67,7 +68,9 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <RootLayoutNav />
+            <ProgressProvider>
+              <RootLayoutNav />
+            </ProgressProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </trpc.Provider>

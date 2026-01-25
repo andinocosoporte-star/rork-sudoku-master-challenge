@@ -1,7 +1,3 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-
 export interface ProgressEntry {
   id?: number;
   userId: string;
@@ -11,32 +7,47 @@ export interface ProgressEntry {
   hintsUsed: number;
 }
 
-const dbDir = path.join(process.cwd(), '.data');
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
+// In-memory storage for progress (will persist across requests but not server restarts)
+const progressStore = new Map<string, ProgressEntry[]>();
 
-const dbPath = path.join(dbDir, 'sudoku.db');
-console.log(`[Database] Initializing SQLite at: ${dbPath}`);
+console.log('[Database] ✅ In-memory storage initialized');
 
-const db = new Database(dbPath);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS progress (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId TEXT NOT NULL,
-    level INTEGER NOT NULL,
-    completedAt TEXT NOT NULL,
-    time INTEGER NOT NULL,
-    hintsUsed INTEGER NOT NULL,
-    createdAt TEXT DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_userId ON progress(userId)
-`);
-
-console.log('[Database] ✅ SQLite initialized successfully\n');
-
-export { db };
+export const db = {
+  prepare: (sql: string) => {
+    return {
+      all: (userId: string): ProgressEntry[] => {
+        console.log(`[DB] SELECT all for userId: ${userId}`);
+        const entries = progressStore.get(userId) || [];
+        console.log(`[DB] Found ${entries.length} entries`);
+        return entries;
+      },
+      run: (userId: string, level: number, completedAt: string, time: number, hintsUsed: number) => {
+        console.log(`[DB] INSERT for userId: ${userId}, level: ${level}`);
+        const entries = progressStore.get(userId) || [];
+        const newEntry: ProgressEntry = {
+          id: Date.now(),
+          userId,
+          level,
+          completedAt,
+          time,
+          hintsUsed,
+        };
+        entries.push(newEntry);
+        progressStore.set(userId, entries);
+        console.log(`[DB] Total entries for user: ${entries.length}`);
+        return { lastInsertRowid: newEntry.id };
+      },
+      get: (userId: string): { count: number } | { maxLevel: number | null } => {
+        const entries = progressStore.get(userId) || [];
+        if (sql.includes('COUNT')) {
+          return { count: entries.length };
+        }
+        if (sql.includes('MAX')) {
+          const maxLevel = entries.length > 0 ? Math.max(...entries.map(e => e.level)) : null;
+          return { maxLevel };
+        }
+        return { count: 0 };
+      },
+    };
+  },
+};

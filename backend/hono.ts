@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+// Backend v2 - Deployed
 import { trpcServer } from "@hono/trpc-server";
 import { cors } from "hono/cors";
 import { appRouter } from "./trpc/app-router";
@@ -17,13 +18,10 @@ app.get("/", (c) => {
   return c.json({ status: "ok", message: "Sudoku API is running", timestamp: new Date().toISOString() });
 });
 
-app.get("/api", (c) => {
-  return c.json({ status: "ok", message: "API endpoint is working", timestamp: new Date().toISOString() });
-});
-
 app.use(
-  "/api/trpc/*",
+  "/trpc/*",
   trpcServer({
+    endpoint: "/api/trpc",
     router: appRouter,
     createContext,
     onError({ error, path, type }) {
