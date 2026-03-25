@@ -124,7 +124,7 @@ export function useSudokuGame(level: SudokuLevel | null) {
         hintsUsed,
       });
       
-      addCompletedLevel(level.level, timer, hintsUsed);
+      void addCompletedLevel(level.level, timer, hintsUsed);
     }
   }, [grid, errors, isComplete, level, timer, hintsUsed, addCompletedLevel]);
 

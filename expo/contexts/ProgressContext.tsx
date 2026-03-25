@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
-import { trpc } from '@/lib/trpc';
 
 export interface CompletedLevel {
   level: number;
@@ -17,34 +16,32 @@ export interface ProgressData {
 }
 
 const STORAGE_KEY = '@sudoku_progress';
+const EMPTY_PROGRESS: ProgressData = {
+  completedLevels: [],
+  totalCompleted: 0,
+  highestLevel: 0,
+};
 
 export const [ProgressProvider, useProgress] = createContextHook(() => {
-  const [progress, setProgress] = useState<ProgressData>({
-    completedLevels: [],
-    totalCompleted: 0,
-    highestLevel: 0,
-  });
+  const [progress, setProgress] = useState<ProgressData>(EMPTY_PROGRESS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const progressRef = useRef<ProgressData>(EMPTY_PROGRESS);
 
-  const utils = trpc.useUtils();
 
-  const backendQuery = trpc.game.getProgress.useQuery(
-    { userId: 'guest' },
-    {
-      enabled: false,
-      retry: false,
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
+
+  const persistProgress = useCallback(async (data: ProgressData) => {
+    try {
+      const json = JSON.stringify(data);
+      await AsyncStorage.setItem(STORAGE_KEY, json);
+      console.log('[Progress] ✅ Persisted to AsyncStorage:', data.totalCompleted, 'levels');
+    } catch (error) {
+      console.error('[Progress] ❌ Error persisting:', error);
     }
-  );
-
-  const saveProgressMutation = trpc.game.saveProgress.useMutation({
-    onSuccess: () => {
-      console.log('✅ Progress synced to backend');
-    },
-    onError: (error) => {
-      console.log('⚠️ Backend sync failed (using local storage):', error.message);
-    },
-  });
+  }, []);
 
   const loadProgress = useCallback(async () => {
     try {
@@ -52,30 +49,30 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as ProgressData;
-        console.log('[Progress] Loaded from storage:', parsed.totalCompleted, 'levels');
-        setProgress(parsed);
+        if (parsed.completedLevels && Array.isArray(parsed.completedLevels)) {
+          console.log('[Progress] ✅ Loaded:', parsed.totalCompleted, 'completed levels');
+          setProgress(parsed);
+          progressRef.current = parsed;
+        } else {
+          console.log('[Progress] ⚠️ Invalid stored data, resetting');
+          setProgress(EMPTY_PROGRESS);
+          progressRef.current = EMPTY_PROGRESS;
+        }
       } else {
-        console.log('[Progress] No stored progress found');
+        console.log('[Progress] No stored progress found, starting fresh');
       }
     } catch (error) {
-      console.error('[Progress] Error loading:', error);
+      console.error('[Progress] ❌ Error loading:', error);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const saveToStorage = useCallback(async (data: ProgressData) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      console.log('[Progress] Saved to AsyncStorage');
-    } catch (error) {
-      console.error('[Progress] Error saving to storage:', error);
-    }
-  }, []);
-
   const addCompletedLevel = useCallback(async (level: number, time: number, hintsUsed: number) => {
-    console.log('[Progress] Adding completed level:', level);
-    
+    console.log('[Progress] 🎮 Adding completed level:', level, 'time:', time, 'hints:', hintsUsed);
+
+    const current = progressRef.current;
+
     const newLevel: CompletedLevel = {
       level,
       completedAt: new Date().toISOString(),
@@ -83,42 +80,31 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       hintsUsed,
     };
 
-    setProgress((prev) => {
-      const alreadyCompleted = prev.completedLevels.some(l => l.level === level);
-      if (alreadyCompleted) {
-        console.log('[Progress] Level already completed, updating time');
-        const updated = {
-          ...prev,
-          completedLevels: prev.completedLevels.map(l => 
-            l.level === level ? newLevel : l
-          ),
-        };
-        saveToStorage(updated);
-        return updated;
-      }
+    const alreadyCompleted = current.completedLevels.some(l => l.level === level);
 
-      const newCompletedLevels = [...prev.completedLevels, newLevel];
-      const updated: ProgressData = {
-        completedLevels: newCompletedLevels,
-        totalCompleted: newCompletedLevels.length,
-        highestLevel: Math.max(prev.highestLevel, level),
-      };
-      
-      saveToStorage(updated);
-      return updated;
-    });
-
-    try {
-      saveProgressMutation.mutate({
-        userId: 'guest',
-        level,
-        time,
-        hintsUsed,
-      });
-    } catch (error) {
-      console.log('[Progress] Backend save attempted (may fail silently)');
+    let updatedLevels: CompletedLevel[];
+    if (alreadyCompleted) {
+      console.log('[Progress] Level already completed, updating record');
+      updatedLevels = current.completedLevels.map(l =>
+        l.level === level ? newLevel : l
+      );
+    } else {
+      updatedLevels = [...current.completedLevels, newLevel];
     }
-  }, [saveToStorage, saveProgressMutation]);
+
+    const updated: ProgressData = {
+      completedLevels: updatedLevels,
+      totalCompleted: updatedLevels.length,
+      highestLevel: Math.max(current.highestLevel, level),
+    };
+
+    console.log('[Progress] ✅ Updated progress:', updated.totalCompleted, 'levels, highest:', updated.highestLevel);
+
+    setProgress(updated);
+    progressRef.current = updated;
+
+    void persistProgress(updated);
+  }, [persistProgress]);
 
   const refreshProgress = useCallback(async () => {
     setIsSyncing(true);
@@ -127,19 +113,19 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
   }, [loadProgress]);
 
   const isLevelCompleted = useCallback((level: number) => {
-    return progress.completedLevels.some(l => l.level === level);
-  }, [progress.completedLevels]);
+    return progressRef.current.completedLevels.some(l => l.level === level);
+  }, []);
 
   const getLevelTime = useCallback((level: number) => {
-    const completed = progress.completedLevels.find(l => l.level === level);
-    return completed?.time || null;
-  }, [progress.completedLevels]);
+    const completed = progressRef.current.completedLevels.find(l => l.level === level);
+    return completed?.time ?? null;
+  }, []);
 
   useEffect(() => {
-    loadProgress();
+    void loadProgress();
   }, [loadProgress]);
 
-  return {
+  return useMemo(() => ({
     progress,
     isLoading,
     isSyncing,
@@ -147,5 +133,5 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     refreshProgress,
     isLevelCompleted,
     getLevelTime,
-  };
+  }), [progress, isLoading, isSyncing, addCompletedLevel, refreshProgress, isLevelCompleted, getLevelTime]);
 });

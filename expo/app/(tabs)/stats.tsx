@@ -10,7 +10,7 @@ export default function StatsScreen() {
   const { progress, isLoading, isSyncing, refreshProgress } = useProgress();
   
   const onRefresh = useCallback(() => {
-    refreshProgress();
+    void refreshProgress();
   }, [refreshProgress]);
   
   console.log('[Stats] Progress:', {
